@@ -1,0 +1,32 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  kernel-build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-18
+        run: |
+          sudo apt update
+          sudo apt install -y clang-18 lld-18 make
+
+      - name: Verify toolchain
+        run: |
+          clang-18 --version
+          ld.lld-18 --version
+
+      - name: Build
+        run: make
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: kexp
+          path: build/kexp.bin
