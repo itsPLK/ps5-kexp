@@ -172,18 +172,15 @@ void init_loader_args() {
   if (dlsym(LIBKERNEL_HANDLE, "getpid", &kernel_getpid) == -1)
     return;
 
-  uint32_t version = get_fw_version();
-  uintptr_t kernel_data_base = kaddrs.krodata;
-  if (version >= 0x3000000u) {
-    kernel_data_base -= 0x10000;
-  }
+  uintptr_t kernel_text_base = kaddrs.ktext;
 
   loader_ctx.args.syscall_wrapper = kernel_getpid;
   loader_ctx.args.rwpipe = rwpipe;
   loader_ctx.args.rwpair = rwpair;
   loader_ctx.args.pipe_f_data = rpipe_f_data;
-  loader_ctx.args.kernel_data_base = kernel_data_base;
+  loader_ctx.args.kernel_text_base = kernel_text_base;
   loader_ctx.args.ret = ret_addr;
+  loader_ctx.args.flag = 0x54455854; // 'T','E','X','T'
 }
 
 void run_loader() {
