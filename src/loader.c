@@ -172,12 +172,17 @@ void init_loader_args() {
   if (dlsym(LIBKERNEL_HANDLE, "sceKernelDlsym", &kernel_dlsym) == -1)
     return;
 
+  uint32_t version = get_fw_version();
+  uintptr_t kernel_data_base = kaddrs.krodata;
+  if (version >= 0x3000000u) {
+    kernel_data_base -= 0x10000;
+  }
+
   loader_ctx.args.dlsym = kernel_dlsym;
   loader_ctx.args.rwpipe = rwpipe;
   loader_ctx.args.rwpair = rwpair;
   loader_ctx.args.pipe_f_data = rpipe_f_data;
-  loader_ctx.args.kernel_data_base =
-      kaddrs.krodata - 0x10000; // HACK: maybe its not always 0x10000
+  loader_ctx.args.kernel_data_base = kernel_data_base;
   loader_ctx.args.ret = ret_addr;
 }
 
