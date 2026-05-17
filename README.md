@@ -63,9 +63,9 @@
 
 # Credits
 Special thanks to:
-- TheFlow
-- Spector
+- TheFloW
+- Specter
 - Gezine
-- Cow
+- cow
 - sb
-- Dr. YenYen
+- Dr.Yenyen
