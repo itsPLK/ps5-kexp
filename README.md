@@ -5,7 +5,7 @@
 1. Jailbreak from userland process
 
 2. Create executable shared memory region
-   exec_fd = jitshm_create(size = PAGE_SIZE, permissions = RWX)
+   exec_fd = jitshm_create(name = "", size = PAGE_SIZE, permissions = RWX)
 
 3. Map executable memory into process space
    entry_addr = mmap(
@@ -18,7 +18,7 @@
    )
 
 4. Copy payload machine code into mapped memory
-   copy_memory(
+   memcpy(
        destination = entry_addr,
        source = kexp.buffer,
        size = kexp.length
