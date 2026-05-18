@@ -27,20 +27,17 @@ uintptr_t find_softc() {
   uintptr_t mmio_paddr;
 
   for (uintptr_t addr = kaddrs.allproc; addr >= kaddrs.kdata; addr -= 8) {
-    if (kread(&ptr, addr, sizeof(ptr)) == -1)
-      return -1;
+    kread(&ptr, addr, sizeof(ptr));
 
     if (is_kernel_pointer(ptr) == -1)
       continue;
 
-    if (kread(&mmio, ptr + 0x40, sizeof(mmio)) == -1)
-      return -1;
+    kread(&mmio, ptr + 0x40, sizeof(mmio));
 
     if (is_kernel_pointer(mmio) == -1)
       continue;
 
-    if (kread(&mmio_paddr, ptr + 0x48, sizeof(mmio_paddr)) == -1)
-      return -1;
+    kread(&mmio_paddr, ptr + 0x48, sizeof(mmio_paddr));
 
     if (mmio_paddr == 0)
       continue;
@@ -48,18 +45,20 @@ uintptr_t find_softc() {
     if ((mmio & 0xffffffff) != mmio_paddr)
       continue;
 
-    if (kread(&sotfc, addr, sizeof(sotfc)) == -1)
-      return -1;
+    kread(&sotfc, addr, sizeof(sotfc));
 
     return sotfc;
   }
 
+  notify("failed to find softc");
   return -1;
 }
 
-void iommu_init() {
+int iommu_init() {
   uintptr_t kp = pfind(KERNEL_PID);
   uintptr_t kp_pmap = get_vm_map_pmap(kp);
+  if (kp_pmap == UINTPTR_MAX)
+    return -1;
 
   uintptr_t pml4;
 
@@ -70,11 +69,15 @@ void iommu_init() {
   kaddrs.mmio = get_dmap(IOMMU_MMIO_BASE);
 
   uintptr_t softc = find_softc();
+  if (softc == UINTPTR_MAX)
+    return -1;
 
   kread(&kaddrs.cb2, softc + 0x78, sizeof(kaddrs.cb2));
 
   notify("mmio: %#lx\ncb2: %#lx\ndmap: %#lx\ncr3: %#lx", kaddrs.mmio,
          kaddrs.cb2, kaddrs.dmap, kaddrs.cr3);
+
+  return 0;
 }
 
 ssize_t iommu_write(uintptr_t vaddr, uint64_t value, size_t sz) {
@@ -92,8 +95,7 @@ ssize_t iommu_write(uintptr_t vaddr, uint64_t value, size_t sz) {
 
   uint64_t old_value;
 
-  if (kread(&old_value, vaddr_aligned, sizeof(old_value)) == -1)
-    return -1;
+  kread(&old_value, vaddr_aligned, sizeof(old_value));
 
   size_t count = sizeof(uint64_t) - vaddr_offset;
   size_t n = sz < count ? sz : count;
@@ -104,20 +106,23 @@ ssize_t iommu_write(uintptr_t vaddr, uint64_t value, size_t sz) {
       (old_value & ~mask) | ((value << (vaddr_offset * 8)) & mask);
 
   uintptr_t paddr_aligned = get_paddr(vaddr_aligned);
+  if (paddr_aligned == UINTPTR_MAX)
+    return -1;
 
   if (iommu_write_pa(paddr_aligned, new_value) == -1)
     return -1;
 
   if (sz > count) {
-    if (kread(&old_value, vaddr_aligned + sizeof(uint64_t),
-              sizeof(old_value)) == -1)
-      return -1;
+    kread(&old_value, vaddr_aligned + sizeof(uint64_t), sizeof(old_value));
 
     n = sz - count;
     mask = n == 8 ? UINT64_MAX : (1ul << (n * 8)) - 1;
     new_value = (old_value & ~mask) | ((value >> (count * 8)) & mask);
 
     paddr_aligned = get_paddr(vaddr_aligned + 8);
+    if (paddr_aligned == UINTPTR_MAX)
+      return -1;
+
     if (iommu_write_pa(paddr_aligned, new_value) == -1)
       return -1;
   }
@@ -143,16 +148,12 @@ ssize_t iommu_write_pa(uintptr_t paddr, uint64_t value) {
   cmd.data0 = value;
   cmd.data1 = value >> 32;
 
-  if (kread(&cur_tail, kaddrs.mmio + 0xa008, sizeof(cur_tail)) == -1)
-    return -1;
+  kread(&cur_tail, kaddrs.mmio + 0xa008, sizeof(cur_tail));
 
   uintptr_t next_tail = (cur_tail + sizeof(cmd)) % IOMMU_QUEUE_SIZE;
 
-  if (kwrite(kaddrs.cb2 + cur_tail, &cmd, sizeof(cmd)) == -1)
-    return -1;
-
-  if (kwrite(kaddrs.mmio + 0xa008, &next_tail, sizeof(next_tail)) == -1)
-    return -1;
+  kwrite(kaddrs.cb2 + cur_tail, &cmd, sizeof(cmd));
+  kwrite(kaddrs.mmio + 0xa008, &next_tail, sizeof(next_tail));
 
   while (1) {
     kread(&cur_head, kaddrs.mmio + 0xa000, sizeof(cur_head));

@@ -11,12 +11,33 @@ ENTRY int main(payload_args_t *args) {
   init_libkernel_api();
   init_libc_api();
 
+  notify("master_pipe: [%i, %i]\nvictim_pipe: [%i, %i]\nallproc: %#lx\nelfldr: "
+         "ptr: %#lx size: %#lx",
+         args->master_pipe[0], args->master_pipe[1], args->victim_pipe[0],
+         args->victim_pipe[1], args->allproc, args->elfldr_ptr,
+         args->elfldr_size);
+
   init_karw(args);
   init_kaddrs(args->allproc);
-  patch_qa_flags();
-  init_loader(args->elf, args->elf_sz);
-  init_loader_args();
-  run_loader();
+  if (patch_qa_flags() == -1) {
+    notify("unable to patch qa flags !!");
+    return -1;
+  }
+
+  if (init_loader(args->elfldr_ptr, args->elfldr_size) == -1) {
+    notify("unable to init elfldr !!");
+    return -1;
+  }
+
+  if (init_loader_args() == -1) {
+    notify("unable to init elfldr args !!");
+    return -1;
+  }
+
+  if (run_loader() == -1) {
+    notify("unable to run elfldr !!");
+    return -1;
+  }
 
   return 0;
 }

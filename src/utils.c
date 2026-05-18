@@ -21,7 +21,7 @@ uint32_t get_fw_version() {
   size_t size = sizeof(version);
 
   if (sysctl(mib, 2, &version, &size, 0, 0)) {
-    return 0;
+    return -1;
   }
 
   return version;

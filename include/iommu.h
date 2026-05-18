@@ -19,7 +19,7 @@ typedef struct {
   uint32_t data1 : 32;
 } iommu_cmd_completion_wait;
 
-void iommu_init();
+int iommu_init();
 ssize_t iommu_write(uintptr_t vaddr, uint64_t value, size_t sz);
 ssize_t iommu_write_pa(uintptr_t paddr, uint64_t value);
 #endif

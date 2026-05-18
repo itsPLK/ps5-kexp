@@ -43,8 +43,8 @@ typedef struct {
 
 COMMON loader_ctx_t loader_ctx;
 
-void init_loader(char *elf, size_t size);
-void init_loader_args();
-void run_loader();
+int init_loader(char *elfldr_ptr, size_t size);
+int init_loader_args();
+int run_loader();
 
 #endif

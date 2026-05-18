@@ -59,5 +59,5 @@ uintptr_t get_vm_map_pmap(uintptr_t p);
 uintptr_t get_vm_map_root(uintptr_t p);
 int vm_map_set_protection(uintptr_t vaddr, size_t sz, uint8_t prot);
 uintptr_t find_vm_map_entry(uintptr_t vaddr);
-void patch_qa_flags();
+int patch_qa_flags();
 #endif
