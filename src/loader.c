@@ -222,29 +222,21 @@ int init_loader_args() {
 
   notify("syscall_wrapper: %#lx\nrwpipe: [%i, %i]\nrwpair: [%i, "
          "%i]\npipe_f_data: %#lx\nkernel_text_base: %#lx\nret: %lx",
-         loader_ctx.args.syscall_wrapper, rwpipe[0], rwpipe[1], rwpair[0],
-         rwpair[1], loader_ctx.args.pipe_f_data,
+         loader_ctx.args.syscall_wrapper, loader_ctx.args.rwpipe[0],
+         loader_ctx.args.rwpipe[1], loader_ctx.args.rwpair[0],
+         loader_ctx.args.rwpair[1], loader_ctx.args.pipe_f_data,
          loader_ctx.args.kernel_text_base, loader_ctx.args.ret);
   return 0;
 }
 
 int run_loader() {
-  uintptr_t pthread;
-  uint32_t pthread_id;
+  typedef void (*elfldr_entry)(loader_args_t* args);
 
-  if (pthread_create(&pthread, 0, loader_ctx.entry, (void *)&loader_ctx.args)) {
-    notify("failed to create thread !!");
-    return -1;
-  }
+  elfldr_entry entry = loader_ctx.entry;
 
-  pthread_id = *(uint32_t *)pthread;
+  notify("running elfldr...");
 
-  notify("Created elfldr thread with id %i !!", pthread_id);
-
-  if (pthread_join(pthread, 0)) {
-    notify("failed to join thread !!");
-    return -1;
-  }
+  entry(&loader_ctx.args);
 
   notify("elfldr returned %#lx !!", *(uint64_t *)loader_ctx.args.ret);
 
