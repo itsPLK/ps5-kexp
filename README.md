@@ -39,13 +39,14 @@
 
 7. Create new thread
     result = pthread_create(
-        thread_handle_out = pthread_addr_addr,
+        thread_handle_out = pthread_addr_out,
         attributes = NULL,
         start_routine = entry_addr,
         argument = payload_args
     )
 
 8. Wait for thread to finish
+    pthread_addr = read_u64(pthread_addr_out)
     result = pthread_join(
         thread = pthread_addr,
         return_value_out = ret_addr

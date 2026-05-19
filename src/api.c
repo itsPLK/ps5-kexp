@@ -10,7 +10,7 @@ void init_libkernel_api() {
 
 #define API(ret, name, args)                                                   \
   do {                                                                         \
-    if (dlsym(LIBKERNEL_HANDLE, #name, &addrp))                                \
+    if (dlsym(LIBKERNEL_HANDLE, #name, &addrp) == -1)                          \
       __builtin_trap();                                                        \
     name = (ret(*) args)(addrp);                                               \
   } while (0);
@@ -25,7 +25,7 @@ void init_libc_api() {
 
 #define API(ret, name, args)                                                   \
   do {                                                                         \
-    if (dlsym(LIBC_HANDLE, #name, &addrp))                                     \
+    if (dlsym(LIBC_HANDLE, #name, &addrp) == -1)                               \
       __builtin_trap();                                                        \
     name = (ret(*) args)(addrp);                                               \
   } while (0);

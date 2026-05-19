@@ -302,10 +302,9 @@ uintptr_t find_openpsid_ptr() {
   char data[0x10];
   char tmp[0x10];
 
-  int mib[2] = {7, 0x7FFFFBF2}; // machdep.openpsid
   size_t size = sizeof(data);
 
-  if (sysctl(mib, 2, data, &size, 0, 0)) {
+  if (sysctlbyname("machdep.openpsid", data, &size, 0, 0) == -1) {
     notify("unable to get openpsid !!");
     return -1;
   }

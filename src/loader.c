@@ -138,7 +138,16 @@ int init_loader_args() {
   }
 
   int master_sock = socket(AF_INET6, SOCK_DGRAM, 0);
+  if (master_sock == -1) {
+    notify("failed to create master socket !!");
+    return -1;
+  }
+
   int victim_sock = socket(AF_INET6, SOCK_DGRAM, 0);
+  if (victim_sock == -1) {
+    notify("failed to create victim socket !!");
+    return -1;
+  }
 
   *(uint32_t *)(loader_ctx.args_map + 0x00) = 0x14;
   *(uint32_t *)(loader_ctx.args_map + 0x04) = IPPROTO_IPV6;

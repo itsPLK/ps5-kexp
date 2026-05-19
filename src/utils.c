@@ -17,10 +17,9 @@ void notify(const char *fmt, ...) {
 uint32_t get_fw_version() {
   uint32_t version;
 
-  int mib[2] = {1, 46}; // kern.sdk_version
   size_t size = sizeof(version);
 
-  if (sysctl(mib, 2, &version, &size, 0, 0)) {
+  if (sysctlbyname("kern.sdk_version", &version, &size, 0, 0) == -1) {
     return -1;
   }
 
