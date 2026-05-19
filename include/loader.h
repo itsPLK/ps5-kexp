@@ -30,7 +30,6 @@ typedef struct {
   uintptr_t pipe_f_data;
   uintptr_t kernel_text_base;
   uint64_t *ret;
-  uint32_t flag;
 } loader_args_t;
 
 typedef struct {

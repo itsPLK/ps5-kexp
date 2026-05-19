@@ -218,7 +218,6 @@ int init_loader_args() {
   loader_ctx.args.pipe_f_data = rpipe_f_data;
   loader_ctx.args.kernel_text_base = kaddrs.ktext;
   loader_ctx.args.ret = ret_addr;
-  loader_ctx.args.flag = 0x54455854; // 'T','E','X','T'
 
   notify("syscall_wrapper: %#lx\nrwpipe: [%i, %i]\nrwpair: [%i, "
          "%i]\npipe_f_data: %#lx\nkernel_text_base: %#lx\nret: %lx",
@@ -230,13 +229,13 @@ int init_loader_args() {
 }
 
 int run_loader() {
-  typedef void (*elfldr_entry)(loader_args_t* args);
+  typedef void (*elfldr_entry)(loader_args_t*, uint32_t);
 
   elfldr_entry entry = loader_ctx.entry;
 
   notify("running elfldr...");
 
-  entry(&loader_ctx.args);
+  entry(&loader_ctx.args, 0x54455854u); // TEXT
 
   notify("elfldr returned %#lx !!", *(uint64_t *)loader_ctx.args.ret);
 
