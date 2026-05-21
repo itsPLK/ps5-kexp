@@ -1,6 +1,5 @@
 #define LIBC_HANDLE 2
 
-API(int *, __error, (void))
 API(void *, malloc, (size_t size))
 API(void, free, (void *ptr))
 API(void, memcpy, (void *dst, const void *src, size_t num))
