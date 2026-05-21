@@ -13,7 +13,7 @@ OBJS := \
   $(BUILD_DIR)/api.o \
   $(BUILD_DIR)/main.o \
   $(BUILD_DIR)/iommu.o \
-  $(BUILD_DIR)/utils.o \
+  $(BUILD_DIR)/logger.o \
   $(BUILD_DIR)/loader.o \
   $(BUILD_DIR)/kernel.o \
   $(BUILD_DIR)/syscalls.o \

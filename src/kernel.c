@@ -1,13 +1,15 @@
 #include "kernel.h"
 #include "api.h"
 #include "iommu.h"
-#include "utils.h"
+#include "logger.h"
 #include <elf.h>
 
 DATA kaddrs_t kaddrs;
 DATA karw_ctx_t karw_ctx;
 
 void init_karw(payload_args_t *args) {
+  log("init karw started...");
+
   karw_ctx.master_pipe[0] = args->master_pipe[0];
   karw_ctx.master_pipe[1] = args->master_pipe[1];
   karw_ctx.victim_pipe[0] = args->victim_pipe[0];
@@ -16,23 +18,31 @@ void init_karw(payload_args_t *args) {
   karw_ctx.pipebuf.in = 0;
   karw_ctx.pipebuf.out = 0;
   karw_ctx.pipebuf.size = PAGE_SIZE;
+
+  log("init karw completed !!");
 }
 
 void init_kaddrs(uintptr_t allproc) {
+  log("init kaddrs started...");
+
   kaddrs.allproc = allproc;
 
   find_dyn_segment();
   find_hash_table();
   find_kmdp();
 
-  notify("ktext: %#lx\nksize: %#lx\nkaslr: %#lx\nkdata: %#lx\nkrodata: "
-         "%#lx\nkmdp: %#lx\nallproc: %#lx",
-         kaddrs.ktext, kaddrs.ksize, kaddrs.kaslr, kaddrs.kdata, kaddrs.krodata,
-         kaddrs.kmdp, kaddrs.allproc);
+  log("kaddrs { ktext: %#lx ksize: %#lx kaslr: %#lx kdata: %#lx krodata: "
+      "%#lx kmdp: %#lx allproc: %#lx }",
+      kaddrs.ktext, kaddrs.ksize, kaddrs.kaslr, kaddrs.kdata, kaddrs.krodata,
+      kaddrs.kmdp, kaddrs.allproc);
+
+  log("init kaddrs completed !!");
 }
 
 void find_dyn_segment() {
   Elf64_Dyn dyn[6];
+
+  log("find dyn segment started...");
 
   uintptr_t vaddr = ALIGN_DOWN(kaddrs.allproc, 0x1000);
   while (1) {
@@ -42,6 +52,7 @@ void find_dyn_segment() {
       if (dyn[i].d_tag == DT_SYMTAB && dyn[i + 1].d_tag == DT_SYMENT &&
           dyn[i + 2].d_tag == DT_STRTAB && dyn[i + 3].d_tag == DT_STRSZ &&
           dyn[i + 4].d_tag == DT_HASH) {
+        log("found dyn segment at %#lx !!", vaddr);
         kaddrs.kdata = vaddr;
         kaddrs.krodata = dyn[i + 4].d_un.d_ptr;
         goto found;
@@ -52,11 +63,14 @@ void find_dyn_segment() {
   }
 
 found:
+  log("find dyn segment completed !!");
   return;
 }
 
 void find_hash_table() {
   char data[0x10];
+
+  log("find hash table started...");
 
   uintptr_t vaddr = ALIGN_DOWN(kaddrs.kdata, 0x1000);
   while (1) {
@@ -69,6 +83,7 @@ void find_hash_table() {
 
     if (elf_hash_nbucket == 1 && elf_hash_nchain == 1 && elf_hash_bucket == 0 &&
         elf_hash_chain == 0) {
+      log("found hash table at %#lx !!", vaddr);
       kaddrs.kaslr = vaddr - kaddrs.krodata;
       kaddrs.krodata = vaddr;
       break;
@@ -76,10 +91,14 @@ void find_hash_table() {
 
     vaddr -= 0x1000;
   }
+
+  log("find hash table completed !!");
 }
 
 void find_kmdp() {
   char data[0x50];
+
+  log("find kmdp started...");
 
   uintptr_t vaddr = ALIGN_UP(kaddrs.allproc, 0x1000);
   while (1) {
@@ -88,6 +107,7 @@ void find_kmdp() {
     // Module info is at the end.
     if (strcmp(data + 0x08, "kernel") == 0 &&
         strcmp(data + 0x18, "elf kernel") == 0) {
+      log("found kmdp at %#lx !!", vaddr);
       kaddrs.kmdp = vaddr;
       kaddrs.ktext = *(uintptr_t *)(data + 0x30);
       kaddrs.ksize = *(uintptr_t *)(data + 0x40);
@@ -96,6 +116,8 @@ void find_kmdp() {
 
     vaddr += 0x1000;
   }
+
+  log("find kmdp completed !!");
 }
 
 int flush() {
@@ -284,17 +306,21 @@ uintptr_t get_paddr(uintptr_t vaddr) {
 uintptr_t find_vm_pmap_ptr(uintptr_t vmspace) {
   uintptr_t vm_pmap;
 
+  log("find vm_pmap started...");
+
   for (int offset = 0x1c8; offset <= 0x200; offset += 8) {
     kread(&vm_pmap, vmspace + offset, sizeof(vm_pmap));
 
     size_t vm_pmap_offset = vm_pmap - vmspace;
 
     if (vm_pmap_offset >= 0x2c0 && vm_pmap_offset <= 0x2f0) {
+      log("found va_mpmap at %#lx !!", vmspace + offset);
+      log("find vm_pmap completed !!");
       return vmspace + offset;
     }
   }
 
-  notify("unable to find vm_pmap !!");
+  log("unable to find vm_pmap !!");
   return -1;
 }
 
@@ -302,10 +328,12 @@ uintptr_t find_openpsid_ptr() {
   char data[0x10];
   char tmp[0x10];
 
+  log("find openpsid start...");
+
   size_t size = sizeof(data);
 
   if (sysctlbyname("machdep.openpsid", data, &size, 0, 0) == -1) {
-    notify("unable to get openpsid !!");
+    log("unable to get sysctlbyname !!");
     return -1;
   }
 
@@ -314,12 +342,27 @@ uintptr_t find_openpsid_ptr() {
     kread(tmp, addr, sizeof(tmp));
 
     if (memcmp(data, tmp, sizeof(data)) == 0) {
+      log("found openpsid at %#lx !!", addr);
+      log("find openpsid completed !!");
       return addr;
     }
   }
 
-  notify("unable to find openpsid in kernel !!");
+  log("unable to find openpsid !!");
   return -1;
+}
+
+uint32_t get_fw_version() {
+  uint32_t version;
+
+  size_t size = sizeof(version);
+
+  if (sysctlbyname("kern.sdk_version", &version, &size, 0, 0) == -1) {
+    log("unable to get sysctlbyname !!");
+    return -1;
+  }
+
+  return version;
 }
 
 uintptr_t get_vm_map_pmap(uintptr_t p) {
@@ -384,6 +427,8 @@ uintptr_t find_vm_map_entry(uintptr_t vaddr) {
     return -1;
   }
 
+  log("find vm_map_entry started...");
+
   uintptr_t p = pfind(getpid());
   uintptr_t root = get_vm_map_root(p);
   if (root == UINTPTR_MAX)
@@ -404,19 +449,25 @@ uintptr_t find_vm_map_entry(uintptr_t vaddr) {
     kread(&end, vme + 0x28, sizeof(end));
 
     if (vaddr < start) {
-      if (left == 0)
+      if (left == 0) {
+        log("found vm_map_entry at %#lx !!", prev);
         return prev;
+      }
+
       vme = left;
     } else if (end > vaddr) {
       return vme;
     } else {
-      if (right == 0)
+      if (right == 0) {
+        log("found vm_map_entry at %#lx !!", vme);
         return vme;
+      }
+
       vme = right;
     }
   }
 
-  notify("failed to find vm_map_entry of addr %#lx", vaddr);
+  log("failed to find vm_map_entry of addr %#lx", vaddr);
   return -1;
 }
 
@@ -425,9 +476,13 @@ int patch_qa_flags() {
   uint32_t security_flags, qa_flags;
   uint8_t target_id, utoken_flags;
 
+  log("patch qa flags started...");
+
   uint32_t version = get_fw_version();
+  log("fw_version: %#x", version);
+
   if (version == UINT32_MAX) {
-    notify("failed to get fw version !!");
+    log("unable to get fw version !!");
     return -1;
   }
 
@@ -439,10 +494,11 @@ int patch_qa_flags() {
   } else {
     uintptr_t openpsid_ptr = find_openpsid_ptr();
     if (openpsid_ptr == UINTPTR_MAX) {
+      log("unable to find openpsid !!");
       return -1;
     }
 
-    notify("openpsid_ptr: %#lx", openpsid_ptr);
+    log("openpsid_ptr: %#lx", openpsid_ptr);
 
     security_flags_ptr = openpsid_ptr - 0x14;
     target_id_ptr = openpsid_ptr - 0xB;
@@ -450,27 +506,32 @@ int patch_qa_flags() {
     utoken_flags_ptr = openpsid_ptr + 0x78;
   }
 
-  notify("security_flags_ptr: %#lx\ntarget_id_ptr: %#lx\nqa_flags_ptr: "
-         "%#lx\nutoken_flags_ptr: %#lx\n",
-         security_flags_ptr, target_id_ptr, qa_flags_ptr, utoken_flags_ptr);
+  log("qaf { security_flags_ptr: %#lx target_id_ptr: %#lx qa_flags_ptr: %#lx "
+      "utoken_flags_ptr: %#lx }",
+      security_flags_ptr, target_id_ptr, qa_flags_ptr, utoken_flags_ptr);
 
   kread(&security_flags, security_flags_ptr, sizeof(security_flags));
   kread(&target_id, target_id_ptr, sizeof(target_id));
   kread(&qa_flags, qa_flags_ptr, sizeof(qa_flags));
   kread(&utoken_flags, utoken_flags_ptr, sizeof(utoken_flags));
 
-  notify("security_flags: %#x\ntarget_id: %#x\nqa_flags: "
-         "%#x\nutoken_flags: %#x\n",
-         security_flags, target_id, qa_flags, utoken_flags);
+  log("before qaf { security_flags: %#x target_id: %#x qa_flags: %#x "
+      "utoken_flags: "
+      "%#x }",
+      security_flags, target_id, qa_flags, utoken_flags);
 
   security_flags |= 0x14;
   target_id = 0x82;
   qa_flags |= 0x10300;
   utoken_flags |= 1;
 
+  log("new qaf { security_flags: %#x target_id: %#x qa_flags: %#x "
+      "utoken_flags: %#x }",
+      security_flags, target_id, qa_flags, utoken_flags);
+
   if (version >= 0x7000000u) {
     if (iommu_init() == -1) {
-      notify("failed to init iommu !!");
+      log("unable to init iommu !!");
       return -1;
     }
 
@@ -490,10 +551,12 @@ int patch_qa_flags() {
   kread(&qa_flags, qa_flags_ptr, sizeof(qa_flags));
   kread(&utoken_flags, utoken_flags_ptr, sizeof(utoken_flags));
 
-  notify("security_flags: %#x\ntarget_id: %#x\nqa_flags: "
-         "%#x\nutoken_flags: %#x\n",
-         security_flags, target_id, qa_flags, utoken_flags);
+  log("after qaf { security_flags: %#x target_id: %#x qa_flags: %#x "
+      "utoken_flags: %#x }",
+      security_flags, target_id, qa_flags, utoken_flags);
 
-  notify("kernel data patches applied !!");
+  log("patch qa flags completed !!");
+
+  notify("qa flags patches applied !!");
   return 0;
 }

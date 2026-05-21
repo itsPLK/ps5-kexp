@@ -7,4 +7,7 @@ API(size_t, strlen, (const char *str))
 API(void, memset, (void *ptr, int value, size_t num))
 API(int, strcmp, (const char *s1, const char *s2))
 API(int, memcmp, (const void *s1, const void *s2, size_t n))
-API(char *, vsnprintf, (char *s, size_t n, const char *format, va_list arg))
+API(int, snprintf,
+    (char *restrict str, size_t size, const char *restrict format, ...));
+API(int, vsnprintf,
+    (char *restrict str, size_t size, const char *restrict format, va_list ap))

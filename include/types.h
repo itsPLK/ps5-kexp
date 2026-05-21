@@ -12,6 +12,8 @@
 #define ALIGN_UP(addr, align) (addr + (align - 1)) & ~(align - 1)
 #define ALIGN_DOWN(addr, align) addr & ~(align - 1)
 
+#define O_WRONLY 1
+
 #define AF_UNIX 1
 #define AF_INET 2
 #define AF_INET6 28

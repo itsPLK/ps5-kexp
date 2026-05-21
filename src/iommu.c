@@ -1,6 +1,6 @@
 #include "iommu.h"
 #include "kernel.h"
-#include "utils.h"
+#include "logger.h"
 
 int is_kernel_pointer(uintptr_t ptr) {
   if (ptr == 0)
@@ -26,6 +26,8 @@ uintptr_t find_softc() {
   uintptr_t sotfc;
   uintptr_t mmio_paddr;
 
+  log("find softc started...");
+
   for (uintptr_t addr = kaddrs.allproc; addr >= kaddrs.kdata; addr -= 8) {
     kread(&ptr, addr, sizeof(ptr));
 
@@ -45,16 +47,22 @@ uintptr_t find_softc() {
     if ((mmio & 0xffffffff) != mmio_paddr)
       continue;
 
+    log("found softc at %#lx", addr);
+
     kread(&sotfc, addr, sizeof(sotfc));
+
+    log("find softc completed !!");
 
     return sotfc;
   }
 
-  notify("failed to find softc");
+  log("unable to find softc !!");
   return -1;
 }
 
 int iommu_init() {
+  log("init iommu started...");
+
   uintptr_t kp = pfind(KERNEL_PID);
   uintptr_t kp_pmap = get_vm_map_pmap(kp);
   if (kp_pmap == UINTPTR_MAX)
@@ -74,9 +82,10 @@ int iommu_init() {
 
   kread(&kaddrs.cb2, softc + 0x78, sizeof(kaddrs.cb2));
 
-  notify("mmio: %#lx\ncb2: %#lx\ndmap: %#lx\ncr3: %#lx", kaddrs.mmio,
-         kaddrs.cb2, kaddrs.dmap, kaddrs.cr3);
+  log("kaddrs { mmio: %#lx cb2: %#lx dmap: %#lx cr3: %#lx }", kaddrs.mmio,
+      kaddrs.cb2, kaddrs.dmap, kaddrs.cr3);
 
+  log("init iommu completed !!");
   return 0;
 }
 
@@ -86,6 +95,8 @@ ssize_t iommu_write(uintptr_t vaddr, uint64_t value, size_t sz) {
 
   if (vaddr == 0)
     return -1;
+
+  log("iommu_write => vaddr: %#lx value: %#lx, value: %#lx", vaddr, value, sz);
 
   uintptr_t vaddr_offset = vaddr % sizeof(uint64_t);
   uintptr_t vaddr_aligned = ALIGN_DOWN(vaddr, sizeof(uint64_t));
@@ -137,6 +148,8 @@ ssize_t iommu_write_pa(uintptr_t paddr, uint64_t value) {
 
   if (paddr == 0 || (paddr % sizeof(uint64_t)) != 0)
     return -1;
+
+  log("iommu_write_pa => paddr: %#lx value: %#lx", paddr, value);
 
   cmd.s = 1;
   cmd.i = 0;

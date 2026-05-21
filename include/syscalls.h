@@ -5,6 +5,7 @@
 
 extern pid_t getpid(void);
 extern int dlsym(SceKernelModule handle, const char *symbol, void **addrp);
+extern int open(const char *path, int flags, ...);
 extern ssize_t read(int fd, void *buf, size_t nbytes);
 extern ssize_t write(int fd, const void *buf, size_t nbytes);
 extern void *mmap(void *addr, size_t len, int prot, int flags, int fd,
@@ -16,5 +17,6 @@ extern int setsockopt(int s, int level, int optname, const void *optval,
                       socklen_t optlen);
 extern int pipe2(int fildes[2], int flags);
 extern int close(int fd);
+extern int dup2(int oldd, int newd);
 
 #endif

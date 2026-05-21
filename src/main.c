@@ -2,7 +2,7 @@
 #include "iommu.h"
 #include "kernel.h"
 #include "loader.h"
-#include "utils.h"
+#include "logger.h"
 
 ENTRY int main(payload_args_t *args) {
   if (args == 0)
@@ -11,14 +11,20 @@ ENTRY int main(payload_args_t *args) {
   init_libkernel_api();
   init_libc_api();
 
-  notify("master_pipe: [%i, %i]\nvictim_pipe: [%i, %i]\nallproc: %#lx\nelfldr: "
-         "ptr: %#lx size: %#lx",
-         args->master_pipe[0], args->master_pipe[1], args->victim_pipe[0],
-         args->victim_pipe[1], args->allproc, args->elfldr_ptr,
-         args->elfldr_size);
+  if (logger_init() == -1) {
+    notify("unable to init logger !!");
+    return -1;
+  }
+
+  log("payload_args { master_pipe: [%i, %i] victim_pipe: [%i, %i] allproc: "
+      "%#lx elfldr { ptr: "
+      "%#lx size: %#lx } }",
+      args->master_pipe[0], args->master_pipe[1], args->victim_pipe[0],
+      args->victim_pipe[1], args->allproc, args->elfldr_ptr, args->elfldr_size);
 
   init_karw(args);
   init_kaddrs(args->allproc);
+
   if (patch_qa_flags() == -1) {
     notify("unable to patch qa flags !!");
     return -1;

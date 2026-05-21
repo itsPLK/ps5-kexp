@@ -1,37 +1,40 @@
 #include "loader.h"
 #include "api.h"
 #include "kernel.h"
-#include "utils.h"
+#include "logger.h"
 #include <elf.h>
 
 DATA loader_ctx_t loader_ctx;
 
-int init_loader(char *elfldr_ptr, size_t size) {
-  if (elfldr_ptr == 0) {
-    notify("Empty elfldr !!");
+int init_loader(char *elf_ptr, size_t size) {
+  if (elf_ptr == 0) {
+    log("empty elf !!");
     return -1;
   }
 
-  Elf64_Ehdr *ehdr = (Elf64_Ehdr *)elfldr_ptr;
-  Elf64_Phdr *phdr = (Elf64_Phdr *)(elfldr_ptr + ehdr->e_phoff);
-  Elf64_Shdr *shdr = (Elf64_Shdr *)(elfldr_ptr + ehdr->e_shoff);
+  log("init loader started...");
+
+  Elf64_Ehdr *ehdr = (Elf64_Ehdr *)elf_ptr;
+  Elf64_Phdr *phdr = (Elf64_Phdr *)(elf_ptr + ehdr->e_phoff);
+  Elf64_Shdr *shdr = (Elf64_Shdr *)(elf_ptr + ehdr->e_shoff);
 
   if (size < sizeof(Elf64_Ehdr) || size < sizeof(Elf64_Phdr) + ehdr->e_phoff ||
       size < sizeof(Elf64_Shdr) + ehdr->e_shoff) {
-    notify("truncated ELF !!");
+    log("truncated ELF !!");
     return -1;
   }
 
   if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0) {
-    notify("ELF signature mismatch !!");
+    log("ELF signature mismatch !!");
     return -1;
   }
 
-  for (int i = 0; i < ehdr->e_phnum; i++)
+  for (int i = 0; i < ehdr->e_phnum; i++) {
     if (phdr[i].p_offset + phdr[i].p_filesz > size) {
-      notify("truncated ELF !!");
+      log("truncated ELF !!");
       return -1;
     }
+  }
 
   size_t min_vaddr = -1;
   size_t max_vaddr = 0;
@@ -60,14 +63,14 @@ int init_loader(char *elfldr_ptr, size_t size) {
     loader_ctx.base = min_vaddr;
     flags |= MAP_FIXED;
   } else {
-    notify("unsupported ELF type !!");
+    log("unsupported ELF type !!");
     return -1;
   }
 
   loader_ctx.base = mmap(loader_ctx.base, loader_ctx.size, prot, flags, -1, 0);
   if (loader_ctx.base == UINTPTR_MAX) {
-    notify("failed to map memory with size %#x prot: %#x flags: %#x !!",
-           loader_ctx.size, prot, flags);
+    log("unable to map memory with size %#x prot: %#x flags: %#x !!",
+        loader_ctx.size, prot, flags);
     return -1;
   }
 
@@ -77,7 +80,7 @@ int init_loader(char *elfldr_ptr, size_t size) {
       if (!phdr[i].p_memsz || !phdr[i].p_filesz)
         continue;
 
-      memcpy(loader_ctx.base + phdr[i].p_vaddr, elfldr_ptr + phdr[i].p_offset,
+      memcpy(loader_ctx.base + phdr[i].p_vaddr, elf_ptr + phdr[i].p_offset,
              phdr[i].p_filesz);
     }
   }
@@ -87,7 +90,7 @@ int init_loader(char *elfldr_ptr, size_t size) {
     if (shdr[i].sh_type != SHT_RELA)
       continue;
 
-    Elf64_Rela *rela = (Elf64_Rela *)(elfldr_ptr + shdr[i].sh_offset);
+    Elf64_Rela *rela = (Elf64_Rela *)(elf_ptr + shdr[i].sh_offset);
     for (int j = 0; j < (int)(shdr[i].sh_size / sizeof(Elf64_Rela)); j++) {
       if ((rela[j].r_info & 0xffffffff) == R_X86_64_RELATIVE) {
         *(uintptr_t *)(loader_ctx.base + rela[j].r_offset) =
@@ -107,45 +110,56 @@ int init_loader(char *elfldr_ptr, size_t size) {
 
     if (prot & PROT_EXEC) {
       if (vm_map_set_protection(segment_addr, segment_size, prot) == -1) {
-        notify("unable to set protection to %#x for mapped memory %#lx with "
-               "size %#lx",
-               prot, segment_addr, segment_size);
+        log("unable to set protection to %#x for mapped memory %#lx with "
+            "size %#lx",
+            prot, segment_addr, segment_size);
         munmap(loader_ctx.base, loader_ctx.size);
+        return -1;
       }
     } else {
       if (mprotect(segment_addr, segment_size, prot) == -1) {
-        notify("unable to set protection to %#x for mapped memory %#lx with "
-               "size %#lx",
-               prot, segment_addr, segment_size);
+        log("unable to set protection to %#x for mapped memory %#lx with "
+            "size %#lx",
+            prot, segment_addr, segment_size);
         munmap(loader_ctx.base, loader_ctx.size);
+        return -1;
       }
     }
   }
 
   loader_ctx.entry = loader_ctx.base + ehdr->e_entry;
+
+  log("loader_ctx { base: %#lx size: %#lx entry: %#lx }", loader_ctx.base,
+      loader_ctx.size, loader_ctx.entry);
+
+  log("init loader completed !!");
   return 0;
 }
 
 int init_loader_args() {
+  log("init loader args started...");
+
   uint8_t prot = PROT_READ | PROT_WRITE;
   int flags = MAP_ANONYMOUS | MAP_PRIVATE;
 
   loader_ctx.args_map = mmap(0, PAGE_SIZE, prot, flags, -1, 0);
   if (loader_ctx.args_map == UINTPTR_MAX) {
-    notify("failed to map memory with size %#x prot: %#x flags: %#x !!",
-           PAGE_SIZE, prot, flags);
+    log("unable to map memory with size %#x prot: %#x flags: %#x !!", PAGE_SIZE,
+        prot, flags);
     return -1;
   }
 
+  log("loader_ctx { args_map: %#lx }", loader_ctx.args_map);
+
   int master_sock = socket(AF_INET6, SOCK_DGRAM, 0);
   if (master_sock == -1) {
-    notify("failed to create master socket !!");
+    log("unable to create master socket !!");
     return -1;
   }
 
   int victim_sock = socket(AF_INET6, SOCK_DGRAM, 0);
   if (victim_sock == -1) {
-    notify("failed to create victim socket !!");
+    log("unable to create victim socket !!");
     return -1;
   }
 
@@ -155,7 +169,7 @@ int init_loader_args() {
 
   if (setsockopt(master_sock, IPPROTO_IPV6, IPV6_2292PKTOPTIONS,
                  loader_ctx.args_map, 0x18) == -1) {
-    notify("failed to set socket option IPV6_2292PKTOPTIONS !!");
+    log("unable to set socket option IPV6_2292PKTOPTIONS !!");
     return -1;
   }
 
@@ -163,7 +177,7 @@ int init_loader_args() {
 
   if (setsockopt(victim_sock, IPPROTO_IPV6, IPV6_PKTINFO, loader_ctx.args_map,
                  0x14) == -1) {
-    notify("failed to set socket option IPV6_PKTINFO !!");
+    log("unable to set socket option IPV6_PKTINFO !!");
     return -1;
   }
 
@@ -187,7 +201,7 @@ int init_loader_args() {
   int pipe_fd[2];
 
   if (pipe2(pipe_fd, 0) == -1) {
-    notify("unable to pipe2 !!");
+    log("unable to pipe2 !!");
     return -1;
   }
 
@@ -208,7 +222,7 @@ int init_loader_args() {
 
   void *kernel_getpid;
   if (dlsym(LIBKERNEL_HANDLE, "getpid", &kernel_getpid) == -1) {
-    notify("failed to dlsym getpid !!");
+    log("unable to dlsym getpid !!");
     return -1;
   }
 
@@ -219,17 +233,19 @@ int init_loader_args() {
   loader_ctx.args.kernel_text_base = kaddrs.ktext;
   loader_ctx.args.ret = ret_addr;
 
-  notify("syscall_wrapper: %#lx\nrwpipe: [%i, %i]\nrwpair: [%i, "
-         "%i]\npipe_f_data: %#lx\nkernel_text_base: %#lx\nret: %lx",
-         loader_ctx.args.syscall_wrapper, loader_ctx.args.rwpipe[0],
-         loader_ctx.args.rwpipe[1], loader_ctx.args.rwpair[0],
-         loader_ctx.args.rwpair[1], loader_ctx.args.pipe_f_data,
-         loader_ctx.args.kernel_text_base, loader_ctx.args.ret);
+  log("loader_ctx.args { syscall_wrapper: %#lx rwpipe: [%i, %i] rwpair: [%i, "
+      "%i] pipe_f_data: %#lx kernel_text_base: %#lx ret: %lx }",
+      loader_ctx.args.syscall_wrapper, loader_ctx.args.rwpipe[0],
+      loader_ctx.args.rwpipe[1], loader_ctx.args.rwpair[0],
+      loader_ctx.args.rwpair[1], loader_ctx.args.pipe_f_data,
+      loader_ctx.args.kernel_text_base, loader_ctx.args.ret);
+
+  log("init loader args completed !!");
   return 0;
 }
 
 int run_loader() {
-  typedef void (*elfldr_entry)(loader_args_t*, uint32_t);
+  typedef void (*elfldr_entry)(loader_args_t *args, uint32_t type);
 
   elfldr_entry entry = loader_ctx.entry;
 
@@ -238,6 +254,8 @@ int run_loader() {
   entry(&loader_ctx.args, 0x54455854u); // TEXT
 
   notify("elfldr returned %#lx !!", *(uint64_t *)loader_ctx.args.ret);
+
+  log("loader args cleanup started...");
 
   munmap(loader_ctx.base, loader_ctx.size);
 
@@ -249,5 +267,7 @@ int run_loader() {
   close(loader_ctx.args.rwpipe[1]);
 
   munmap(loader_ctx.args_map, PAGE_SIZE);
+
+  log("loader args cleanup completed !!");
   return 0;
 }

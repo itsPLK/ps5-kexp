@@ -55,6 +55,7 @@ uintptr_t get_dmap(uintptr_t paddr);
 uintptr_t get_paddr(uintptr_t vaddr);
 uintptr_t find_vm_pmap_ptr(uintptr_t vmspace);
 uintptr_t find_openpsid_ptr();
+uint32_t get_fw_version();
 uintptr_t get_vm_map_pmap(uintptr_t p);
 uintptr_t get_vm_map_root(uintptr_t p);
 int vm_map_set_protection(uintptr_t vaddr, size_t sz, uint8_t prot);
