@@ -8,8 +8,8 @@ ENTRY int main(payload_args_t *args) {
   if (args == 0)
     return -1;
 
-  init_libkernel_api();
   init_libc_api();
+  init_libkernel_api();
 
   if (logger_init() == -1) {
     notify("unable to init logger !!");

@@ -1,7 +1,5 @@
 #define LIBKERNEL_HANDLE 0x2001
 
-API(int *, __error, (void))
-API(void, scePthreadYield, (void))
 API(void, sceKernelSendNotificationRequest,
     (int32_t device, NotificationRequest *req, size_t size, int32_t blocking))
 API(int, sysctlbyname,
