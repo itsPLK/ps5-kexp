@@ -5,12 +5,12 @@
 1. Jailbreak from userland process
 
 2. Create executable shared memory region
-   exec_fd = jitshm_create(name = "", size = PAGE_SIZE, permissions = RWX)
+   exec_fd = jitshm_create(name = "", size = ALIGN_UP(kexp.length, PAGE_SIZE), permissions = RWX)
 
 3. Map executable memory into process space
    entry_addr = mmap(
        address = 0,
-       size = PAGE_SIZE,
+       size = ALIGN_UP(kexp.length, PAGE_SIZE),
        permissions = RWX,
        flags = 0,
        fd = exec_fd,
