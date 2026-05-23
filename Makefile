@@ -11,7 +11,7 @@ CFLAGS := $(TARGET) -O3 -fPIE -ffreestanding \
 	    -fno-omit-frame-pointer -Iinclude -Wall -Wextra -Werror \
 		-Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable -Wno-uninitialized -Wno-int-conversion
 
-LDFLAGS := $(TARGET) -fuse-ld=lld -nostdlib -nostartfiles
+LDFLAGS := $(TARGET) -fuse-ld=lld -nostdlib -nostartfiles -static -Wl,--build-id=none
 
 OBJS := \
   $(BUILD_DIR)/api.o \
