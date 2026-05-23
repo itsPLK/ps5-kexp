@@ -249,11 +249,14 @@ int run_loader() {
 
   elfldr_entry entry = loader_ctx.entry;
 
-  notify("running elfldr...");
+  // notify("running elfldr...");
 
   entry(&loader_ctx.args, 0x54455854u); // TEXT
 
-  notify("elfldr returned %#lx !!", *(uint64_t *)loader_ctx.args.ret);
+  uint64_t ret_val = *loader_ctx.args.ret;
+  if (ret_val != 0) {
+    notify("elfldr returned %#lx !!", ret_val);
+  }
 
   log("loader args cleanup started...");
 

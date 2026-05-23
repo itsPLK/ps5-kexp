@@ -557,6 +557,6 @@ int patch_qa_flags() {
 
   log("patch qa flags completed !!");
 
-  notify("qa flags patches applied !!");
+  // notify("qa flags patches applied !!");
   return 0;
 }
