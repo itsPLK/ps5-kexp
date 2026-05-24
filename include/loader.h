@@ -28,7 +28,7 @@ typedef struct {
   int *rwpipe;
   int *rwpair;
   uintptr_t pipe_f_data;
-  uintptr_t kernel_text_base;
+  uintptr_t kernel_data_base;
   uint64_t *ret;
 } loader_args_t;
 

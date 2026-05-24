@@ -226,32 +226,57 @@ int init_loader_args() {
     return -1;
   }
 
+  uint32_t version = get_fw_version();
+  log("fw_version: %#x", version);
+
+  if (version == UINT32_MAX) {
+    log("unable to get fw version !!");
+    return -1;
+  }
+
+  uint32_t fw = version & 0xffff0000;
+
+  uintptr_t kernel_data_base = kaddrs.krodata;
+
+  if ((fw >= 0x3000000 && fw <= 0x7610000)) {
+    kernel_data_base -= 0x10000;
+  }
+
   loader_ctx.args.syscall_wrapper = kernel_getpid;
   loader_ctx.args.rwpipe = rwpipe;
   loader_ctx.args.rwpair = rwpair;
   loader_ctx.args.pipe_f_data = rpipe_f_data;
-  loader_ctx.args.kernel_text_base = kaddrs.ktext;
+  loader_ctx.args.kernel_data_base = kernel_data_base;
   loader_ctx.args.ret = ret_addr;
 
   log("loader_ctx.args { syscall_wrapper: %#lx rwpipe: [%i, %i] rwpair: [%i, "
-      "%i] pipe_f_data: %#lx kernel_text_base: %#lx ret: %lx }",
+      "%i] pipe_f_data: %#lx kernel_data_base: %#lx ret: %lx }",
       loader_ctx.args.syscall_wrapper, loader_ctx.args.rwpipe[0],
       loader_ctx.args.rwpipe[1], loader_ctx.args.rwpair[0],
       loader_ctx.args.rwpair[1], loader_ctx.args.pipe_f_data,
-      loader_ctx.args.kernel_text_base, loader_ctx.args.ret);
+      loader_ctx.args.kernel_data_base, loader_ctx.args.ret);
 
   log("init loader args completed !!");
   return 0;
 }
 
 int run_loader() {
-  typedef void (*elfldr_entry)(loader_args_t *args, uint32_t type);
+  uintptr_t pthread;
+  uint32_t pthread_id;
 
-  elfldr_entry entry = loader_ctx.entry;
+  if (pthread_create(&pthread, 0, loader_ctx.entry, (void *)&loader_ctx.args)) {
+    log("failed to create elfldr thread !!");
+    return -1;
+  }
 
-  // notify("running elfldr...");
+  pthread_id = *(uint32_t *)pthread;
 
-  entry(&loader_ctx.args, 0x54455854u); // TEXT
+  // notify("Created elfldr thread with id %i !!", pthread_id);
+
+  if (pthread_join(pthread, 0)) {
+    notify("failed to join thread !!");
+    return -1;
+  }
 
   uint64_t ret_val = *loader_ctx.args.ret;
   if (ret_val != 0) {
