@@ -226,20 +226,10 @@ int init_loader_args() {
     return -1;
   }
 
-  uint32_t version = get_fw_version();
-  log("fw_version: %#x", version);
-
-  if (version == UINT32_MAX) {
-    log("unable to get fw version !!");
+  uintptr_t kernel_data_base = get_kernel_data_base();
+  if (kernel_data_base == UINTPTR_MAX) {
+    log("unable to get kernel data base !!");
     return -1;
-  }
-
-  uint32_t fw = version & 0xffff0000;
-
-  uintptr_t kernel_data_base = kaddrs.krodata;
-
-  if ((fw >= 0x3000000 && fw <= 0x7610000)) {
-    kernel_data_base -= 0x10000;
   }
 
   loader_ctx.args.syscall_wrapper = kernel_getpid;

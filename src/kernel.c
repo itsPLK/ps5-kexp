@@ -365,6 +365,133 @@ uint32_t get_fw_version() {
   return version;
 }
 
+uintptr_t get_kernel_data_base() {
+  uintptr_t kernel_data_base = -1;
+
+  uint32_t version = get_fw_version();
+  log("fw_version: %#x", version);
+
+  if (version == UINT32_MAX) {
+    log("unable to get fw version !!");
+    return -1;
+  }
+
+  switch (version & 0xffff0000) {
+  case 0x1000000:
+  case 0x1010000:
+  case 0x1020000:
+    kernel_data_base = kaddrs.allproc - 0x26D1BF8;
+    break;
+
+  case 0x1050000:
+  case 0x1100000:
+  case 0x1110000:
+  case 0x1120000:
+  case 0x1130000:
+  case 0x1140000:
+    kernel_data_base = kaddrs.allproc - 0x26D1C18;
+    break;
+
+  case 0x2000000:
+  case 0x2200000:
+  case 0x2250000:
+  case 0x2260000:
+  case 0x2300000:
+  case 0x2500000:
+  case 0x2700000:
+    kernel_data_base = kaddrs.allproc - 0x2701C28;
+    break;
+
+  case 0x3000000:
+  case 0x3100000:
+  case 0x3200000:
+  case 0x3210000:
+    kernel_data_base = kaddrs.allproc - 0x276DC58;
+    break;
+
+  case 0x4020000:
+  case 0x4000000:
+  case 0x4030000:
+  case 0x4500000:
+  case 0x4510000:
+    kernel_data_base = kaddrs.allproc - 0x27EDCB8;
+    break;
+
+  case 0x5000000:
+  case 0x5020000:
+  case 0x5100000:
+  case 0x5500000:
+    kernel_data_base = kaddrs.allproc - 0x291DD00;
+    break;
+
+  case 0x6000000:
+  case 0x6020000:
+  case 0x6500000:
+    kernel_data_base = kaddrs.allproc - 0x2869D20;
+    break;
+
+  case 0x7000000:
+  case 0x7010000:
+  case 0x7200000:
+  case 0x7400000:
+  case 0x7600000:
+  case 0x7610000:
+    kernel_data_base = kaddrs.allproc - 0x2859D50;
+    break;
+
+  case 0x8000000:
+  case 0x8200000:
+  case 0x8400000:
+  case 0x8600000:
+    kernel_data_base = kaddrs.allproc - 0x2875D50;
+    break;
+
+  case 0x9000000:
+  case 0x9050000:
+  case 0x9200000:
+  case 0x9400000:
+  case 0x9600000:
+    kernel_data_base = kaddrs.allproc - 0x2755D50;
+    break;
+
+  case 0x10000000:
+  case 0x10010000:
+  case 0x10200000:
+  case 0x10400000:
+  case 0x10600000:
+    kernel_data_base = kaddrs.allproc - 0x2765D70;
+    break;
+
+  case 0x11000000:
+  case 0x11200000:
+  case 0x11400000:
+  case 0x11600000:
+    kernel_data_base = kaddrs.allproc - 0x2875D70;
+    break;
+
+  case 0x12000000:
+  case 0x12020000:
+  case 0x12200000:
+  case 0x12400000:
+  case 0x12600000:
+  case 0x12700000:
+    kernel_data_base = kaddrs.allproc - 0x2885E00;
+    break;
+
+  case 0x13000000:
+  case 0x13200000:
+    kernel_data_base = kaddrs.allproc - 0x28C5E00;
+    break;
+
+  default:
+    notify("unsupported fw !!");
+    log("unable to calculate kernel data base");
+    return -1;
+  }
+
+  return kernel_data_base;
+}
+
 uintptr_t get_vm_map_pmap(uintptr_t p) {
   uintptr_t p_vmspace;
   uintptr_t vm_pmap;
