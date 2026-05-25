@@ -76,14 +76,14 @@ int iommu_init() {
   kaddrs.dmap = pml4 - kaddrs.cr3;
   kaddrs.mmio = get_dmap(IOMMU_MMIO_BASE);
 
-  uintptr_t softc = find_softc();
-  if (softc == UINTPTR_MAX)
+  kaddrs.softc = find_softc();
+  if (kaddrs.softc == UINTPTR_MAX)
     return -1;
 
-  kread(&kaddrs.cb2, softc + 0x78, sizeof(kaddrs.cb2));
+  kread(&kaddrs.cb3, kaddrs.softc + 0x80, sizeof(kaddrs.cb3));
 
-  log("kaddrs { mmio: %#lx cb2: %#lx dmap: %#lx cr3: %#lx }", kaddrs.mmio,
-      kaddrs.cb2, kaddrs.dmap, kaddrs.cr3);
+  log("kaddrs { softc: %#lx mmio: %#lx cb3: %#lx dmap: %#lx cr3: %#lx }",
+      kaddrs.softc, kaddrs.mmio, kaddrs.cb3, kaddrs.dmap, kaddrs.cr3);
 
   log("init iommu completed !!");
   return 0;
@@ -161,16 +161,17 @@ ssize_t iommu_write_pa(uintptr_t paddr, uint64_t value) {
   cmd.data0 = value;
   cmd.data1 = value >> 32;
 
-  kread(&cur_tail, kaddrs.mmio + 0xa008, sizeof(cur_tail));
+  kread(&cur_tail, kaddrs.mmio + 0xe008, sizeof(cur_tail));
 
   uintptr_t next_tail = (cur_tail + sizeof(cmd)) % IOMMU_QUEUE_SIZE;
 
-  kwrite(kaddrs.cb2 + cur_tail, &cmd, sizeof(cmd));
-  kwrite(kaddrs.mmio + 0xa008, &next_tail, sizeof(next_tail));
+  kwrite(kaddrs.cb3 + cur_tail, &cmd, sizeof(cmd));
+  kwrite(kaddrs.mmio + 0xe008, &next_tail, sizeof(next_tail));
+  kwrite(kaddrs.softc + 0x88, &next_tail, sizeof(next_tail)); // cb3_tail
 
   while (1) {
-    kread(&cur_head, kaddrs.mmio + 0xa000, sizeof(cur_head));
-    kread(&cur_tail, kaddrs.mmio + 0xa008, sizeof(cur_tail));
+    kread(&cur_head, kaddrs.mmio + 0xe000, sizeof(cur_head));
+    kread(&cur_tail, kaddrs.mmio + 0xe008, sizeof(cur_tail));
 
     if (cur_head == cur_tail)
       break;

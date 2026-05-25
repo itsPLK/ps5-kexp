@@ -74,7 +74,7 @@ typedef struct {
 } karw_ctx_t;
 
 typedef struct {
-  uintptr_t cb2;
+  uintptr_t cb3;
   uintptr_t cr3;
   uintptr_t mmio;
   uintptr_t dmap;
@@ -83,6 +83,7 @@ typedef struct {
   uintptr_t ksize;
   uintptr_t kdata;
   uintptr_t kaslr;
+  uintptr_t softc;
   uintptr_t krodata;
   uintptr_t allproc;
 } kaddrs_t;
