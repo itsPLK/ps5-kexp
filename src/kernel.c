@@ -484,9 +484,9 @@ uintptr_t get_kernel_data_base() {
     break;
 
   default:
-    notify("unsupported fw !!");
-    log("unable to calculate kernel data base");
-    return -1;
+    log("kernel data base defaults to krodata in future...");
+    kernel_data_base = kaddrs.krodata;
+    break;
   }
 
   return kernel_data_base;
